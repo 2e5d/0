@@ -3,12 +3,10 @@ const dataUrl = "https://raw.githubusercontent.com/2e5d/0/refs/heads/main/Script
 async function fetchData() {
     try {
         const response = await fetch(dataUrl);
-        if (!response.ok) throw new Error('Failed to fetch data');
         const data = await response.json();
         renderCodeBlocks(data);
     } catch (error) {
-        console.error('Error fetching data:', error);
-        showError('Failed to load scripts. Please try again later.');
+        showError('Failed to load scripts.');
     }
 }
 
@@ -17,25 +15,19 @@ function renderCodeBlocks(data) {
     if (!container) return;
     
     container.innerHTML = '';
-
-    // Convert object to array and render scripts
-    const scripts = Object.entries(data);
-    
-    scripts.forEach(([title, codeText], index) => {
+    Object.entries(data).forEach(([title, code]) => {
         const block = document.createElement('div');
         block.className = 'code-block';
         block.setAttribute('data-title', title.toLowerCase());
-
+        
         block.innerHTML = `
             <h2>${title}</h2>
-            <pre><code><span class="string">${escapeHtml(codeText)}</span></code></pre>
-            <button class="copy-button" onclick="copyCode(this)">Copy</button>
+            <pre><code>${escapeHtml(code)}</code></pre>
+            <button class="copy-button" onclick="copyCode(this)">Copy Code</button>
         `;
-
         container.appendChild(block);
     });
     
-    // Add "More Coming Soon" message
     const comingSoon = document.createElement('div');
     comingSoon.className = 'coming-soon';
     comingSoon.textContent = 'More scripts coming soon...';
@@ -43,72 +35,41 @@ function renderCodeBlocks(data) {
 }
 
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    return text.replace(/&/g, "&amp;")
+               .replace(/</g, "&lt;")
+               .replace(/>/g, "&gt;");
 }
 
 function searchCode() {
-    const input = document.getElementById('searchInput').value.toLowerCase();
-    const codeBlocks = document.querySelectorAll('.code-block');
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    const blocks = document.querySelectorAll('.code-block');
     const comingSoon = document.querySelector('.coming-soon');
-
-    let visibleCount = 0;
-
-    codeBlocks.forEach(block => {
-        if (block.classList.contains('coming-soon')) return;
-        
+    
+    blocks.forEach(block => {
         const title = block.getAttribute('data-title');
-        const codeElement = block.querySelector('code');
-        const codeText = codeElement ? codeElement.textContent.toLowerCase() : '';
-        
-        const matches = title.includes(input) || codeText.includes(input);
-        block.classList.toggle('hidden', !matches);
-        
-        if (matches) visibleCount++;
+        const code = block.querySelector('code').textContent.toLowerCase();
+        const isVisible = title.includes(query) || code.includes(query);
+        block.classList.toggle('hidden', !isVisible);
     });
-
-    // Show/hide "More Coming Soon" based on search
+    
     if (comingSoon) {
-        comingSoon.classList.toggle('hidden', input.length > 0);
+        comingSoon.classList.toggle('hidden', query.length > 0);
     }
 }
 
 function copyCode(button) {
-    const codeElement = button.previousElementSibling.querySelector('code');
-    const text = codeElement.textContent.trim();
+    const code = button.previousElementSibling.querySelector('code').textContent;
     
-    navigator.clipboard.writeText(text).then(() => {
-        const originalText = button.textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        const original = button.textContent;
         button.textContent = 'Copied!';
-        button.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
-        }, 2000);
-    }).catch(err => {
-        console.error('Failed to copy:', err);
-        button.textContent = 'Failed!';
-        setTimeout(() => {
-            button.textContent = 'Copy';
-        }, 2000);
+        setTimeout(() => button.textContent = original, 1500);
     });
 }
 
 function showError(message) {
     const container = document.getElementById('codeContainer');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div style="text-align: center; color: var(--text-tertiary); padding: var(--space-3xl);">
-            <div style="font-size: var(--font-size-xl); margin-bottom: var(--space-md);">⚠️</div>
-            <div>${message}</div>
-        </div>
-    `;
+    container.innerHTML = `<div style="text-align: center; padding: 3rem; color: #ef4444;">${message}</div>`;
 }
 
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    fetchData();
-});
+document.addEventListener('DOMContentLoaded', fetchData);
